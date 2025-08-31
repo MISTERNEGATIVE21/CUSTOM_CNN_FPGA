@@ -1,4 +1,35 @@
-tensorflow>=2.8
-torch>=2.0
-torchvision
+############################
+# Core ML frameworks
+############################
+tensorflow[and-cuda]
+#torch
+#torchvision
+
+############################
+# Quantization & FPGA toolchain
+############################
+qkeras
+brevitas
+hls4ml
+tf-keras
+############################
+# ONNX export & runtime
+############################
+# Pinned for hls4ml compatibility on Python 3.12
+onnx==1.16.1
+# onnxruntime is optional (for ONNX inference); versions >=1.17 support Py3.12
+onnxruntime==1.18.1
+# Required by PyTorch's new ONNX exporter (dynamo path)
+onnxscript
+onnxoptimizer
+# Optional: extra passes/utilities for quantized ONNX flows
+qonnx
+tf2onnx
+onnx2keras
+############################
+# Utilities
+############################
 matplotlib
+Pillow
+numpy
+scipy

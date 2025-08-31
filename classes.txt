@@ -1,0 +1,13 @@
+Cer__TLS__PowderyMildew
+Cercospora
+Cercospora__PowderyMildew
+Healthy
+PowderyMildew
+TargetLeafSpot
+TargetLeafSpot__Cercospora
+TargetLeafSpot__PowderyMildew__TobacoStrick
+TargetLeafSpot__TobacoStrick
+TobacoStrick
+TobacoStrick__Cercospora
+TobacoStrick__PowderyMildew__Cercospora
+TobacoStrick__TargetLeafSpot__Cercospora
