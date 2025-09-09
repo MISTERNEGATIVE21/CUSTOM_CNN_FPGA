@@ -1,10 +1,10 @@
 ############################
 # Core ML frameworks
 ############################
-tensorflow[and-cuda]
+#tensorflow[and-cuda]
 #torch
-#torchvision
-
+torchvision
+tensorflow
 ############################
 # Quantization & FPGA toolchain
 ############################
