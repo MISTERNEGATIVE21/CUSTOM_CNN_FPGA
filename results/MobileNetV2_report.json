@@ -1,0 +1,93 @@
+{
+  "Cer__TLS__PowderyMildew": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 10.0
+  },
+  "Cercospora": {
+    "precision": 0.3333333333333333,
+    "recall": 0.023809523809523808,
+    "f1-score": 0.044444444444444446,
+    "support": 42.0
+  },
+  "Cercospora__PowderyMildew": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 12.0
+  },
+  "Healthy": {
+    "precision": 0.11363636363636363,
+    "recall": 0.16129032258064516,
+    "f1-score": 0.13333333333333333,
+    "support": 31.0
+  },
+  "PowderyMildew": {
+    "precision": 0.5,
+    "recall": 0.125,
+    "f1-score": 0.2,
+    "support": 24.0
+  },
+  "TargetLeafSpot": {
+    "precision": 0.07894736842105263,
+    "recall": 0.14285714285714285,
+    "f1-score": 0.1016949152542373,
+    "support": 21.0
+  },
+  "TargetLeafSpot__Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "TargetLeafSpot__PowderyMildew__TobacoStrick": {
+    "precision": 0.125,
+    "recall": 0.16666666666666666,
+    "f1-score": 0.14285714285714285,
+    "support": 6.0
+  },
+  "TargetLeafSpot__TobacoStrick": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "TobacoStrick": {
+    "precision": 0.125,
+    "recall": 0.05,
+    "f1-score": 0.07142857142857142,
+    "support": 20.0
+  },
+  "TobacoStrick__Cercospora": {
+    "precision": 0.01282051282051282,
+    "recall": 0.16666666666666666,
+    "f1-score": 0.023809523809523808,
+    "support": 6.0
+  },
+  "TobacoStrick__PowderyMildew__Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "TobacoStrick__TargetLeafSpot__Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "accuracy": 0.07653061224489796,
+  "macro avg": {
+    "precision": 0.0991336598624048,
+    "recall": 0.06433002481389578,
+    "f1-score": 0.055197533163634856,
+    "support": 196.0
+  },
+  "weighted avg": {
+    "precision": 0.17605890350251252,
+    "recall": 0.07653061224489796,
+    "f1-score": 0.0783885951475021,
+    "support": 196.0
+  }
+}

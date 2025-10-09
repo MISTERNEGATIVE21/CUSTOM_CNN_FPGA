@@ -1,0 +1,93 @@
+{
+  "Cer__TLS__PowderyMildew": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 5.0
+  },
+  "Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 21.0
+  },
+  "Cercospora__PowderyMildew": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "Healthy": {
+    "precision": 0.40625,
+    "recall": 0.8387096774193549,
+    "f1-score": 0.5473684210526316,
+    "support": 31.0
+  },
+  "PowderyMildew": {
+    "precision": 0.7,
+    "recall": 0.875,
+    "f1-score": 0.7777777777777778,
+    "support": 24.0
+  },
+  "TargetLeafSpot": {
+    "precision": 0.4915254237288136,
+    "recall": 0.8787878787878788,
+    "f1-score": 0.6304347826086957,
+    "support": 33.0
+  },
+  "TargetLeafSpot__Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 12.0
+  },
+  "TargetLeafSpot__PowderyMildew__TobacoStrick": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 12.0
+  },
+  "TargetLeafSpot__TobacoStrick": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 12.0
+  },
+  "TobacoStrick": {
+    "precision": 0.48484848484848486,
+    "recall": 0.7272727272727273,
+    "f1-score": 0.5818181818181818,
+    "support": 22.0
+  },
+  "TobacoStrick__Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "TobacoStrick__PowderyMildew__Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "TobacoStrick__TargetLeafSpot__Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "accuracy": 0.46938775510204084,
+  "macro avg": {
+    "precision": 0.16020183912133065,
+    "recall": 0.25536694488307393,
+    "f1-score": 0.19518455101979126,
+    "support": 196.0
+  },
+  "weighted avg": {
+    "precision": 0.2871467124985588,
+    "recall": 0.46938775510204084,
+    "f1-score": 0.35326242625196536,
+    "support": 196.0
+  }
+}

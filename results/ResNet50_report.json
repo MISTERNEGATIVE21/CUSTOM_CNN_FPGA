@@ -1,0 +1,93 @@
+{
+  "Cer__TLS__PowderyMildew": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 5.0
+  },
+  "Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 21.0
+  },
+  "Cercospora__PowderyMildew": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "Healthy": {
+    "precision": 0.35428571428571426,
+    "recall": 1.0,
+    "f1-score": 0.5232067510548524,
+    "support": 62.0
+  },
+  "PowderyMildew": {
+    "precision": 0.8095238095238095,
+    "recall": 0.68,
+    "f1-score": 0.7391304347826086,
+    "support": 25.0
+  },
+  "TargetLeafSpot": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 21.0
+  },
+  "TargetLeafSpot__Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "TargetLeafSpot__PowderyMildew__TobacoStrick": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "TargetLeafSpot__TobacoStrick": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "TobacoStrick": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 20.0
+  },
+  "TobacoStrick__Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "TobacoStrick__PowderyMildew__Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "TobacoStrick__TargetLeafSpot__Cercospora": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 6.0
+  },
+  "accuracy": 0.4030612244897959,
+  "macro avg": {
+    "precision": 0.08952380952380953,
+    "recall": 0.12923076923076923,
+    "f1-score": 0.09710286044903546,
+    "support": 196.0
+  },
+  "weighted avg": {
+    "precision": 0.21532555879494655,
+    "recall": 0.4030612244897959,
+    "f1-score": 0.259781017525337,
+    "support": 196.0
+  }
+}

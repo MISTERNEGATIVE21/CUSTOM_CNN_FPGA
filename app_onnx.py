@@ -1,11 +1,21 @@
+import os
+from pathlib import Path
+from typing import Optional
+
 import gradio as gr
+import numpy as np
 import torch
 import torchvision.transforms as transforms
-import onnxruntime
-import numpy as np
 from PIL import Image
-import os
-import operator
+
+try:
+    import onnxruntime as ort
+    ORT_AVAILABLE = True
+    ORT_IMPORT_ERROR: Optional[str] = None
+except (ImportError, OSError) as exc:  # OSError catches execstack restrictions
+    ort = None  # type: ignore[assignment]
+    ORT_AVAILABLE = False
+    ORT_IMPORT_ERROR = str(exc)
 
 # --- Model & Preprocessing Configurations ---
 
@@ -17,28 +27,39 @@ MODEL_CONFIGS = {
     'densenet': {'size': (224, 224)}
 }
 
+MODELS_DIR = Path("models")
+SUPPORTED_MODEL_EXTENSIONS = {".onnx", ".pt", ".pth"}
+
 # --- Utility Functions ---
 
-def get_available_models():
-    """Find all available .pt, .pth, and .onnx model files."""
-    models = {}
-    for file in os.listdir('.'):
-        if file.endswith(('.pt', '.pth', '.onnx')) and 'classification' in file:
-            # Extract a clean model name from the filename
-            model_name = file.replace('plant_disease_classification_', '').rsplit('.', 1)[0].lower()
-            models[model_name] = file
-    return models
+def get_available_models() -> dict[str, str]:
+    """Discover supported model artifacts inside the models/ directory."""
+    models: dict[str, str] = {}
+    if not MODELS_DIR.exists():
+        return models
 
-def get_image_size(model_name):
-    """Get the appropriate image size for the selected model from its architecture name."""
-    model_name_key = model_name.split('_')[0].lower() # e.g., 'resnet_v1' -> 'resnet'
+    for path in MODELS_DIR.rglob("*"):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() not in SUPPORTED_MODEL_EXTENSIONS:
+            continue
+        display_name = str(path.relative_to(MODELS_DIR))
+        models[display_name] = str(path.resolve())
+
+    return dict(sorted(models.items(), key=lambda item: item[0].lower()))
+
+
+def get_image_size(model_identifier: str) -> tuple[int, int]:
+    """Infer expected input size based on filename stem."""
+    stem = Path(model_identifier).stem.lower()
+    model_name_key = stem.split('_')[0] if '_' in stem else stem
     return MODEL_CONFIGS.get(model_name_key, {'size': (224, 224)})['size']
 
 # --- Class Label Setup ---
 
 # Assumes your class labels are the names of subdirectories in 'images/images'
 try:
-    IMAGE_DIR = 'images/images'
+    IMAGE_DIR = 'images'
     classes = sorted([d for d in os.listdir(IMAGE_DIR) if os.path.isdir(os.path.join(IMAGE_DIR, d))])
     idx_to_class = {i: cls for i, cls in enumerate(classes)}
 except FileNotFoundError:
@@ -51,31 +72,35 @@ except FileNotFoundError:
 # --- Model Loading & Caching ---
 
 # Global cache for models and ONNX sessions
-model_cache = {}
+model_cache: dict[str, object] = {}
 # Set device for PyTorch models
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-def load_model_or_session(model_name, model_path):
+def load_model_or_session(model_identifier: str, model_path: str):
     """Load a PyTorch model or an ONNX session if not already in cache."""
-    if model_name not in model_cache:
-        print(f"Loading {model_name}...")
+    cache_key = model_path
+    if cache_key not in model_cache:
+        print(f"Loading {model_identifier} from {model_path}...")
         if model_path.endswith(('.pt', '.pth')):
             try:
                 model = torch.load(model_path, map_location=device)
                 model.eval()  # Set model to evaluation mode
-                model_cache[model_name] = model
+                model_cache[cache_key] = model
             except Exception as e:
                 print(f"Error loading PyTorch model {model_path}: {e}")
                 return None
         elif model_path.endswith('.onnx'):
+            if not ORT_AVAILABLE:
+                print(f"ONNX Runtime unavailable: {ORT_IMPORT_ERROR}")
+                return None
             try:
-                session = onnxruntime.InferenceSession(model_path)
-                model_cache[model_name] = session
+                session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+                model_cache[cache_key] = session
             except Exception as e:
                 print(f"Error loading ONNX session {model_path}: {e}")
                 return None
-    return model_cache.get(model_name)
+    return model_cache.get(cache_key)
 
 # --- Prediction Function ---
 
@@ -89,6 +114,16 @@ def predict(image, model_choice):
     model_or_session = load_model_or_session(model_choice, model_path)
 
     if model_or_session is None:
+        if model_path.endswith('.onnx') and not ORT_AVAILABLE:
+            guidance = (
+                "ONNX Runtime isn't available in this environment.\n"
+                f"Import error: {ORT_IMPORT_ERROR}\n\n"
+                "Try one of the following:\n"
+                "• Reinstall ONNX Runtime: `pip install --force-reinstall onnxruntime==1.17.0`\n"
+                "• On hardened Linux systems, clear the executable-stack flag on the shared library using `execstack -c <path-to-onnxruntime_pybind11_state.so>`\n"
+                "• Alternatively, export the model to PyTorch (.pt/.pth) and load that format."
+            )
+            return guidance
         return f"Error: Failed to load the model '{model_choice}'."
 
     try:
@@ -112,7 +147,24 @@ def predict(image, model_choice):
                 preds = probabilities.cpu().numpy()
         else: # ONNX session
             input_name = model_or_session.get_inputs()[0].name
-            ort_inputs = {input_name: img_tensor.numpy()}
+            ort_input = img_tensor.numpy()
+            input_meta = model_or_session.get_inputs()[0]
+            input_shape = list(input_meta.shape) if hasattr(input_meta, "shape") else []
+            if len(input_shape) == 4:
+                def _resolve_dim(val):
+                    if isinstance(val, (int, float)):
+                        return int(val)
+                    if isinstance(val, str) and val.isdigit():
+                        return int(val)
+                    return None
+
+                dim1 = _resolve_dim(input_shape[1])
+                dim3 = _resolve_dim(input_shape[3])
+                if dim1 == 3:
+                    pass  # channels-first already
+                elif dim3 == 3:
+                    ort_input = np.transpose(ort_input, (0, 2, 3, 1))
+            ort_inputs = {input_name: ort_input}
             ort_outs = model_or_session.run(None, ort_inputs)
             # Apply softmax to logits from ONNX model
             raw_preds = ort_outs[0][0]
@@ -145,6 +197,16 @@ if not model_choices:
 example_path = "examples/healthy_leaf.jpg"
 examples = [[example_path, model_choices[0]]] if os.path.exists(example_path) and model_choices[0] != "No models available" else None
 
+description = (
+    "Upload a plant image and select a model to detect diseases. "
+    "The system supports PyTorch (.pt) and ONNX (.onnx) models."
+)
+if not ORT_AVAILABLE:
+    description += (
+        "\n\n⚠️ ONNX Runtime couldn't be imported, so ONNX models will be unavailable until "
+        "you reinstall the runtime or clear the executable stack restriction."
+    )
+
 iface = gr.Interface(
     fn=predict,
     inputs=[
@@ -153,7 +215,7 @@ iface = gr.Interface(
     ],
     outputs=gr.Textbox(label="Top 3 Predictions"),
     title="🌿 Plant Disease Detection (PyTorch/ONNX)",
-    description="Upload a plant image and select a model to detect diseases. The system supports PyTorch (.pt) and ONNX (.onnx) models.",
+    description=description,
     examples=examples,
     theme=gr.themes.Soft()
 )

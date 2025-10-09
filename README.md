@@ -1,8 +1,66 @@
 # CUSTOM_CNN_FPGA
+
+## 🚀 Quick start with Docker
+
+You can run the full training/export menu from an isolated container. Make sure your dataset is available inside the container (bind-mount the `images/` directory or adjust the path).
+
+```bash
+docker build -t custom-cnn-fpga .
+docker run --rm -it \
+    -p 7860:7860 \
+    -v "$PWD/images":/workspace/images \
+    -v "$PWD/models":/workspace/models \
+    -v "$PWD/results":/workspace/results \
+    custom-cnn-fpga
+```
+
+The default command launches `python new_train.py`, which presents the interactive menu for Keras, PyTorch, and the advanced multi-model workflow. You can override the command, for example to launch the Gradio UI directly once a model has been trained:
+
+```bash
+docker run --rm -it -p 7860:7860 custom-cnn-fpga python advanced_train.py
+```
+
+### Script launcher
+
+For a quick way to run any project script locally, use the interactive launcher:
+
+```bash
+python script_launcher.py
+```
+
+It scans the repository for `.py` files (excluding caches) and lets you pick which one to execute in a loop.
+
+### Netron model viewer
+
+Need a quick way to inspect a trained network? Launch the lightweight Flask helper:
+
+```bash
+python netron_viewer.py
+```
+
+Upload any supported model file (`.onnx`, `.h5`, `.tflite`, `.pt`, etc.). The helper copies the file into `netron_uploads/`, serves it from the Flask app, and produces a sharable `https://netron.app/?url=...` link so you can explore the model in the hosted Netron UI. If you want to share the link with others, make sure the machine running this script is reachable (or expose the `/models/<id>` route through your own tunnel).
+
+### Optional: GPU acceleration
+
+The provided Dockerfile targets CPU execution. If you have an NVIDIA GPU and want to enable CUDA, start from an `nvidia/cuda` base image and install the matching TensorFlow/PyTorch wheels, then run the container with `--gpus all`.
+
+---
+
+## 📊 Training analytics
+
+`advanced_train.py` now streams live accuracy/loss charts and aggregates results for every architecture trained in one run:
+
+- While each model trains, a live snapshot is written to `results/<ModelName>_live.png` so you can watch convergence without attaching a notebook.
+- When training finishes, `results/model_performance_summary.json` captures final metrics and epoch timings for all models.
+- A comparison bar chart at `results/model_accuracy_overview.png` highlights the best validation accuracy across the suite.
+
+These files are regenerated on every run; clear the `results/` directory first if you want a clean slate.
+
+
 import tensorflow as tf
 from tensorflow.keras.layers import (Input, Conv2D, BatchNormalization, ReLU,
-                                     Add, Concatenate, MaxPooling2D,
-                                     GlobalAveragePooling2D, Dense)
+                                                                         Add, Concatenate, MaxPooling2D,
+                                                                         GlobalAveragePooling2D, Dense)
 from tensorflow.keras.models import Model
 from tensorflow.keras.preprocessing import image_dataset_from_directory
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
