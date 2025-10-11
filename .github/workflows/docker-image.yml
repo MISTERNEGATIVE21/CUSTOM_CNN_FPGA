@@ -1,0 +1,18 @@
+name: COTTON_PLANT_DISEASE_DETECTION CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag cotton_plant_disease:$(date +%s)
