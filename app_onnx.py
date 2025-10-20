@@ -27,7 +27,7 @@ MODEL_CONFIGS = {
     'densenet': {'size': (224, 224)}
 }
 
-MODELS_DIR = Path("models")
+MODELS_DIR = Path("models").resolve()
 SUPPORTED_MODEL_EXTENSIONS = {".onnx", ".pt", ".pth"}
 
 # --- Utility Functions ---
@@ -36,15 +36,20 @@ def get_available_models() -> dict[str, str]:
     """Discover supported model artifacts inside the models/ directory."""
     models: dict[str, str] = {}
     if not MODELS_DIR.exists():
+        print(f"⚠️  Models directory not found at {MODELS_DIR}")
+        MODELS_DIR.mkdir(parents=True, exist_ok=True)
         return models
 
-    for path in MODELS_DIR.rglob("*"):
-        if not path.is_file():
-            continue
-        if path.suffix.lower() not in SUPPORTED_MODEL_EXTENSIONS:
-            continue
+    model_files = [p for p in MODELS_DIR.rglob("*") 
+                   if p.is_file() and p.suffix.lower() in SUPPORTED_MODEL_EXTENSIONS]
+    
+    if not model_files:
+        print(f"⚠️  No model files with extensions {SUPPORTED_MODEL_EXTENSIONS} in {MODELS_DIR}")
+    
+    for path in model_files:
         display_name = str(path.relative_to(MODELS_DIR))
         models[display_name] = str(path.resolve())
+        print(f"✅ Found model: {display_name} at {path}")
 
     return dict(sorted(models.items(), key=lambda item: item[0].lower()))
 
@@ -57,15 +62,25 @@ def get_image_size(model_identifier: str) -> tuple[int, int]:
 
 # --- Class Label Setup ---
 
-# Assumes your class labels are the names of subdirectories in 'images/images'
+# Assumes your class labels are the names of subdirectories in 'images/'
+IMAGE_DIR = Path('images').resolve()
 try:
-    IMAGE_DIR = 'images'
-    classes = sorted([d for d in os.listdir(IMAGE_DIR) if os.path.isdir(os.path.join(IMAGE_DIR, d))])
+    if IMAGE_DIR.exists():
+        classes = sorted([d.name for d in IMAGE_DIR.iterdir() if d.is_dir()])
+        if not classes:
+            print(f"⚠️  No class subdirectories found in {IMAGE_DIR}")
+            classes = [f"Class_{i}" for i in range(38)]
+        else:
+            print(f"✅ Found {len(classes)} classes in {IMAGE_DIR}")
+    else:
+        print(f"⚠️  Images directory not found at {IMAGE_DIR}. Using placeholder classes.")
+        IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+        classes = [f"Class_{i}" for i in range(38)]
+    
     idx_to_class = {i: cls for i, cls in enumerate(classes)}
-except FileNotFoundError:
-    print(f"Warning: Directory '{IMAGE_DIR}' not found. Using placeholder classes.")
-    # Create placeholder classes if the directory doesn't exist
-    classes = [f"Class_{i}" for i in range(38)] # Assuming 38 classes like the PlantVillage dataset
+except Exception as e:
+    print(f"⚠️  Error loading classes: {e}. Using placeholder classes.")
+    classes = [f"Class_{i}" for i in range(38)]
     idx_to_class = {i: cls for i, cls in enumerate(classes)}
 
 

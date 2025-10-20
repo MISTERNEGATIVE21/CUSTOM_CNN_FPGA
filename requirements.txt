@@ -1,39 +1,39 @@
 ############################
 # Core ML frameworks
 ############################
-tensorflow==2.15.0
-#torch
-torchvision
+# TensorFlow, PyTorch, and CUDA runtime packages are installed in the Dockerfile
+# to ensure compatibility with both CUDA 12.x and 13.x drivers on the host.
+# The image uses CUDA 12.6 runtime but works with newer host drivers via forward compat.
 
 ############################
 # Quantization & FPGA toolchain
 ############################
 qkeras
 brevitas
-hls4ml
-tf-keras
+hls4ml>=0.8.1
+keras>=3.0.0
+
 ############################
 # ONNX export & runtime
 ############################
-onnxruntime==1.17
-onnx>=1.14
-tf2onnx>=1.14
-# Required by PyTorch's new ONNX exporter (dynamo path)
-#
+onnxruntime-gpu>=1.19.0
+onnx>=1.16.0
+tf2onnx>=1.16.0
+
 ############################
 # Utilities
 ############################
-matplotlib>=3.5
-Pillow>=8.0
-numpy>=1.21
-scipy
-seaborn>=0.12
-scikit-learn>=1.0
-tqdm
-
+matplotlib>=3.8.0
+Pillow>=10.0.0
+numpy>=1.24.0,<2.0.0
+scipy>=1.11.0
+seaborn>=0.13.0
+scikit-learn>=1.3.0
+tqdm>=4.66.0
+opencv-python-headless>=4.8.0
 
 ############################
 # UI / Serving
 ############################
-gradio>=4.0
-Flask>=3.0
+gradio>=4.44.0
+Flask>=3.0.0

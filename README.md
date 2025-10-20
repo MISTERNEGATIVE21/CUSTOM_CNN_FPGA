@@ -1,223 +1,154 @@
 # CUSTOM_CNN_FPGA
 
-## 🚀 Quick start with Docker
-
-You can run the full training/export menu from an isolated container. Make sure your dataset is available inside the container (bind-mount the `images/` directory or adjust the path).
-
-```bash
-docker build -t custom-cnn-fpga .
-docker run --rm -it \
-    -p 7860:7860 \
-    -v "$PWD/images":/workspace/images \
-    -v "$PWD/models":/workspace/models \
-    -v "$PWD/results":/workspace/results \
-    custom-cnn-fpga
-```
-
-The default command launches `python new_train.py`, which presents the interactive menu for Keras, PyTorch, and the advanced multi-model workflow. You can override the command, for example to launch the Gradio UI directly once a model has been trained:
-
-```bash
-docker run --rm -it -p 7860:7860 custom-cnn-fpga python advanced_train.py
-```
-
-### Script launcher
-
-For a quick way to run any project script locally, use the interactive launcher:
-
-```bash
-python script_launcher.py
-```
-
-It scans the repository for `.py` files (excluding caches) and lets you pick which one to execute in a loop.
-
-### Netron model viewer
-
-Need a quick way to inspect a trained network? Launch the lightweight Flask helper:
-
-```bash
-python netron_viewer.py
-```
-
-Upload any supported model file (`.onnx`, `.h5`, `.tflite`, `.pt`, etc.). The helper copies the file into `netron_uploads/`, serves it from the Flask app, and produces a sharable `https://netron.app/?url=...` link so you can explore the model in the hosted Netron UI. If you want to share the link with others, make sure the machine running this script is reachable (or expose the `/models/<id>` route through your own tunnel).
-
-### Optional: GPU acceleration
-
-The provided Dockerfile targets CPU execution. If you have an NVIDIA GPU and want to enable CUDA, start from an `nvidia/cuda` base image and install the matching TensorFlow/PyTorch wheels, then run the container with `--gpus all`.
+End-to-end toolkit for training CNN classifiers on cotton leaf diseases, exporting them to FPGA-friendly formats, and serving interactive demos. The project bundles TensorFlow/Keras, PyTorch, ONNX tooling, and hls4ml pipelines together with Docker-based workflows.
 
 ---
 
-## 📊 Training analytics
+## ✨ Key features
 
-`advanced_train.py` now streams live accuracy/loss charts and aggregates results for every architecture trained in one run:
+- **Hybrid training suite**: `advanced_train.py`, `new_train.py`, and `train.py` cover Keras, PyTorch, and multi-model comparison workflows with live metric logging.
+- **Deployment helpers**: `app.py` (Gradio) and `app_onnx.py` expose trained models; `netron_viewer.py` provides one-click Netron hosting for inspecting weights.
+- **FPGA export path**: `generate_ip.py`, `convert_keras_to_ip.py`, and `hls4ml_*` scripts wire models into Vivado projects, ready for Zybo Z7-10 targets.
+- **Batch job launcher**: `script_launcher.py` scans the repo and lets you execute any Python entry point interactively.
 
-- While each model trains, a live snapshot is written to `results/<ModelName>_live.png` so you can watch convergence without attaching a notebook.
-- When training finishes, `results/model_performance_summary.json` captures final metrics and epoch timings for all models.
-- A comparison bar chart at `results/model_accuracy_overview.png` highlights the best validation accuracy across the suite.
+---
 
-These files are regenerated on every run; clear the `results/` directory first if you want a clean slate.
+## 📁 Repository layout
 
+```
+images/                 # Dataset (bind-mounted into containers)
+models/                 # Pre-trained weights and checkpoints
+results/                # Training artefacts, plots, summaries
+hls4ml_pytorch_project/ # Vivado + hls4ml firmware
+fpga/                   # Board-specific TCL scripts
+```
 
-import tensorflow as tf
-from tensorflow.keras.layers import (Input, Conv2D, BatchNormalization, ReLU,
-                                                                         Add, Concatenate, MaxPooling2D,
-                                                                         GlobalAveragePooling2D, Dense)
-from tensorflow.keras.models import Model
-from tensorflow.keras.preprocessing import image_dataset_from_directory
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-import matplotlib.pyplot as plt
+---
 
+## 🧰 Requirements
 
-# 🔹 Define HybridMergeNet Architecture
-def hybrid_mergenet(input_shape=(224, 224, 3), num_classes=2):
-    inputs = Input(shape=input_shape)
+### Host prerequisites
 
-    # First Conv Block
-    x = Conv2D(32, (3, 3), padding="same")(inputs)
-    x = BatchNormalization()(x)
-    x = ReLU()(x)
+- Docker 24+
+- Docker Compose V2 (`docker compose` CLI)
+- NVIDIA driver 535+ (Linux) if you plan to use GPUs
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed on the host
 
-    # Skip Connection Block
-    skip = Conv2D(32, (3, 3), padding="same")(x)
-    skip = BatchNormalization()(skip)
-    skip = ReLU()(skip)
-    x = Add()([x, skip])  # Residual
+> **Note**: CPU-only usage is still supported. The GPU stack simply unlocks CUDA-accelerated training for TensorFlow and PyTorch.
 
-    # DenseNet-style Concatenation
-    reduce = Conv2D(16, (1, 1), padding="same")(x)  # channel reduction
-    x = Concatenate()([x, reduce])
+### Python dependencies
 
-    # Downsampling
-    x = MaxPooling2D((2, 2))(x)
+`requirements.txt` now excludes the core deep-learning frameworks; the Docker build
+installs them explicitly to avoid CUDA dependency conflicts:
 
-    # Repeat Block with more filters
-    y = Conv2D(64, (3, 3), padding="same")(x)
-    y = BatchNormalization()(y)
-    y = ReLU()(y)
+1. `tensorflow[and-cuda]==2.16.1`
+2. `torch==2.4.0+cu121`, `torchvision==0.19.0+cu121`, `torchaudio==2.4.0+cu121`
 
-    skip2 = Conv2D(64, (3, 3), padding="same")(y)
-    skip2 = BatchNormalization()(skip2)
-    skip2 = ReLU()(skip2)
-    y = Add()([y, skip2])
+When the Docker image is built, these commands run in that order so TensorFlow brings
+in the CUDA 12.3 runtime pieces while PyTorch reuses them without forcing a version
+downgrade. Follow the same sequence if you install locally.
 
-    reduce2 = Conv2D(32, (1, 1), padding="same")(y)
-    y = Concatenate()([y, reduce2])
+---
 
-    y = MaxPooling2D((2, 2))(y)
+## 🚀 Run with Docker (recommended)
 
-    # Global Pool + Dense Softmax
-    x = GlobalAveragePooling2D()(y)
-    outputs = Dense(num_classes, activation="softmax")(x)
+```
+# Build a local image using the included Dockerfile
+docker compose build
 
-    return Model(inputs, outputs, name="HybridMergeNet")
+# Start the container and keep it running in the background
+docker compose up -d
 
+# Tail logs or attach to the interactive script launcher
+docker compose logs -f
+docker compose exec custom-cnn-fpga python script_launcher.py
+```
 
-# 🔹 Load Dataset
-def load_dataset(img_dir="images", img_size=(224, 224), batch_size=32):
-    train_ds = image_dataset_from_directory(
-        img_dir,
-        validation_split=0.2,
-        subset="training",
-        seed=42,
-        image_size=img_size,
-        batch_size=batch_size
-    )
-    val_ds = image_dataset_from_directory(
-        img_dir,
-        validation_split=0.2,
-        subset="validation",
-        seed=42,
-        image_size=img_size,
-        batch_size=batch_size
-    )
+The container mounts your `images/`, `models/`, and `results/` directories so training outputs persist on the host.
 
-    # Data Augmentation (on-the-fly)
-    data_augmentation = tf.keras.Sequential([
-        tf.keras.layers.RandomFlip("horizontal"),
-        tf.keras.layers.RandomRotation(0.1),
-        tf.keras.layers.RandomZoom(0.1),
-    ])
+---
 
-    AUTOTUNE = tf.data.AUTOTUNE
-    train_ds = (train_ds
-                .map(lambda x, y: (data_augmentation(x), y),
-                     num_parallel_calls=AUTOTUNE)
-                .cache()
-                .shuffle(1000)
-                .prefetch(buffer_size=AUTOTUNE))
+## ⚡ Enabling NVIDIA CUDA
 
-    val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
+1. **Verify host GPU stack**
+   ```
+   nvidia-smi
+   ```
+   Confirm the driver version matches the required CUDA runtime (12.3 works out-of-the-box).
 
-    return train_ds, val_ds
+2. **Build with GPU libraries**
+   The Dockerfile already targets `nvidia/cuda:12.3.2-cudnn9-runtime-ubuntu22.04`, installs the CUDA-enabled TensorFlow/PyTorch wheels, and exports the appropriate `LD_LIBRARY_PATH`.
 
+3. **Run containers with GPU access**
+   `docker-compose.yml` specifies the NVIDIA runtime via `device_requests`. Ensure the NVIDIA Container Toolkit is present; then:
+   ```
+   docker compose up -d
+   docker compose exec custom-cnn-fpga python - <<'PY'
+   import tensorflow as tf, torch
+   print('TF GPUs:', tf.config.list_physical_devices('GPU'))
+   print('Torch CUDA:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')
+   PY
+   ```
 
-# 🔹 Plot Training History
-def plot_training(history):
-    acc = history.history['accuracy']
-    val_acc = history.history['val_accuracy']
-    loss = history.history['loss']
-    val_loss = history.history['val_loss']
-    epochs = range(1, len(acc) + 1)
+Common pitfalls:
+- Missing `libnvidia-*.so` libraries ⇒ reinstall the matching driver/toolkit on the host.
+- TensorFlow warning about TensorRT ⇒ optional; install NVIDIA TensorRT packages only if you need TF-TRT acceleration.
 
-    plt.figure(figsize=(12, 5))
+---
 
-    # Accuracy
-    plt.subplot(1, 2, 1)
-    plt.plot(epochs, acc, 'b-', label='Training Accuracy')
-    plt.plot(epochs, val_acc, 'r-', label='Validation Accuracy')
-    plt.title('Training vs Validation Accuracy')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.legend()
+## 🧑‍💻 Local development (optional)
 
-    # Loss
-    plt.subplot(1, 2, 2)
-    plt.plot(epochs, loss, 'b-', label='Training Loss')
-    plt.plot(epochs, val_loss, 'r-', label='Validation Loss')
-    plt.title('Training vs Validation Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
+Prefer running outside Docker? Create a Python 3.10+ virtual environment:
 
-    plt.show()
+```
+python -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install tensorflow[and-cuda]==2.16.1
+pip install --no-deps --index-url https://download.pytorch.org/whl/cu121 \
+   torch==2.4.0+cu121 torchvision==0.19.0+cu121 torchaudio==2.4.0+cu121
+pip install -r requirements.txt
+```
 
+You still need CUDA libraries on the host to leverage the GPU builds.
 
-# 🔹 Main Training Script
-if __name__ == "__main__":
-    IMG_DIR = "images"
-    IMG_SIZE = (224, 224)
-    BATCH_SIZE = 32
-    EPOCHS = 20
+---
 
-    # Load dataset
-    train_ds, val_ds = load_dataset(IMG_DIR, IMG_SIZE, BATCH_SIZE)
+## 📜 Useful scripts
 
-    # Build model
-    model = hybrid_mergenet(input_shape=(224, 224, 3), num_classes=2)
+| Script | Purpose |
+| ------ | ------- |
+| `script_launcher.py` | Interactive selector that runs any Python script in the repo |
+| `advanced_train.py` | Multi-model training pipeline with live charts and summary reports |
+| `training_monitor.py` | Streams training metrics to PNG dashboards |
+| `generate_ip.py` / `convert_keras_to_ip.py` | Convert models into FPGA implementable IP cores |
+| `app.py` / `app_onnx.py` | Launch Gradio demos for TensorFlow and ONNX runtimes |
+| `netron_viewer.py` | Upload & host models for quick Netron inspection |
 
-    # Compile
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-        loss="sparse_categorical_crossentropy",
-        metrics=["accuracy"]
-    )
+---
 
-    # Callbacks: save best model + stop early if no improvement
-    checkpoint = ModelCheckpoint("best_hybrid_mergenet.h5",
-                                 save_best_only=True,
-                                 monitor="val_loss",
-                                 mode="min")
-    early_stop = EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True)
+## 📈 Outputs & artefacts
 
-    # Train
-    history = model.fit(
-        train_ds,
-        validation_data=val_ds,
-        epochs=EPOCHS,
-        callbacks=[checkpoint, early_stop]
-    )
+All training runs populate the `results/` directory with:
 
-    # Plot results
-    plot_training(history)
+- `<Model>_training.png` – accuracy/loss curves
+- `<Model>_confusion.png` – confusion matrix
+- `<Model>_report.json` – precision/recall/F1 summary
+- `model_performance_summary.json` – aggregated view across models
+- `model_accuracy_overview.png` – bar chart comparison
 
-    # Save final model
-    model.save("final_hybrid_mergenet.h5")
+Clear the folder if you need a fresh analysis cache.
+
+---
+
+## 🛠️ Troubleshooting
+
+- **TensorFlow cannot dlopen GPU libraries**: The host driver or container toolkit is mismatched. Reinstall the NVIDIA driver (`nvidia-smi` should succeed) and ensure `/usr/lib/libnvidia-*.so` exist.
+- **Torch reports CPU-only**: Verify the CUDA 12.1 wheels were installed (`pip show torch` inside the container) and that `torch.cuda.is_available()` returns `True`.
+- **Docker build fails fetching dependencies**: Ensure the host has network access and that corporate proxies are configured via `HTTP_PROXY`/`HTTPS_PROXY` build args when required.
+
+---
+
+## 📄 License
+
+This project inherits the licensing terms defined in `LICENSE`.

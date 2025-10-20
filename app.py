@@ -15,21 +15,29 @@ MODEL_CONFIGS = {
 }
 
 DEFAULT_IMAGE_SIZE = (224, 224)
-MODELS_DIR = Path("models")
-IMAGES_DIR = Path("images")
+MODELS_DIR = Path("models").resolve()
+IMAGES_DIR = Path("images").resolve()
 
 def get_available_models() -> dict[str, dict]:
     """Return discovered models keyed by display name with metadata."""
     models: dict[str, dict] = {}
     if not MODELS_DIR.exists():
+        print(f"⚠️  Models directory not found at {MODELS_DIR}")
+        MODELS_DIR.mkdir(parents=True, exist_ok=True)
         return models
 
-    for path in MODELS_DIR.glob("*.h5"):
+    h5_files = list(MODELS_DIR.glob("*.h5"))
+    if not h5_files:
+        print(f"⚠️  No .h5 files in {MODELS_DIR}")
+    
+    for path in h5_files:
         display_name = path.stem
         models[display_name] = {
             "path": path.resolve(),
             "size": get_image_size(display_name),
         }
+        print(f"✅ Found model: {display_name} at {path}")
+    
     return dict(sorted(models.items()))
 
 # Get class labels from training

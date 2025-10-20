@@ -1,19 +1,19 @@
-version: "3.9"
 services:
   custom-cnn-fpga:
     image: 2441139/cotton-plant-disease-detection:latest
-    pull_policy: if_not_present
+    pull_policy: always
     container_name: custom_cnn_fpga
     environment:
-      NVIDIA_VISIBLE_DEVICES: "all"
-      NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      CUDA_VISIBLE_DEVICES: "0"
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
-              capabilities: ["gpu"]
+              count: all
+              capabilities: [gpu]
     volumes:
       - ./models:/workspace/models
       - ./images:/workspace/images
@@ -21,7 +21,9 @@ services:
     ports:
       - "7860:7860"
       - "5000:5000"
-    command: ["sleep", "infinity"]
+    stdin_open: true
+    tty: true
+    command: ["python", "script_launcher.py"]
     restart: unless-stopped
 
 networks:

@@ -23,10 +23,10 @@ from flask import (
 app = Flask(__name__)
 app.secret_key = "netron-uploader"
 
-UPLOAD_DIR = Path("netron_uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR = Path("netron_uploads").resolve()
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-MODELS_DIR = Path("models")
+MODELS_DIR = Path("models").resolve()
 SUPPORTED_EXTENSIONS = {".onnx", ".pb", ".h5", ".keras", ".json", ".tflite", ".pt", ".pth"}
 
 REGISTERED_MODELS: Dict[str, Path] = {}
@@ -46,12 +46,21 @@ def _persist_upload(storage) -> Path:
 def _discover_models() -> Dict[str, Path]:
     discovered: Dict[str, Path] = {}
     if not MODELS_DIR.exists():
+        print(f"⚠️  Models directory not found at {MODELS_DIR}")
+        MODELS_DIR.mkdir(parents=True, exist_ok=True)
         return discovered
 
-    for path in MODELS_DIR.rglob("*"):
-        if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS:
-            rel = path.relative_to(MODELS_DIR)
-            discovered[str(rel)] = path.resolve()
+    model_files = [p for p in MODELS_DIR.rglob("*") 
+                   if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS]
+    
+    if not model_files:
+        print(f"⚠️  No model files with extensions {SUPPORTED_EXTENSIONS} in {MODELS_DIR}")
+    
+    for path in model_files:
+        rel = path.relative_to(MODELS_DIR)
+        discovered[str(rel)] = path.resolve()
+        print(f"✅ Discovered model: {rel} at {path}")
+    
     return dict(sorted(discovered.items()))
 
 

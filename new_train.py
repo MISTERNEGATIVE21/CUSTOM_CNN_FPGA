@@ -79,9 +79,15 @@ def run_keras_workflow():
 
     print("\n--- Keras/TensorFlow Workflow Selected ---")
     IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE = 128, 128, 32
-    DATA_DIR = './images'
+    from pathlib import Path
+    DATA_DIR = str(Path('images').resolve())
+    
+    if not Path(DATA_DIR).exists():
+        print(f"⚠️  Images directory not found at {DATA_DIR}")
+        print("Please ensure the 'images' directory exists with class subdirectories.")
+        return
 
-    print("--- Loading Data ---")
+    print(f"--- Loading Data from {DATA_DIR} ---")
     train_ds = tf.keras.utils.image_dataset_from_directory(
         DATA_DIR, validation_split=0.2, subset="training", seed=123,
         image_size=(IMG_HEIGHT, IMG_WIDTH), batch_size=BATCH_SIZE

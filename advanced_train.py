@@ -205,16 +205,26 @@ def get_image_size(model_name):
 
 def get_available_models():
     models = {}
-    models_dir = Path("models")
+    models_dir = Path("models").resolve()
     if not models_dir.exists():
+        print(f"⚠️  Models directory not found at {models_dir}")
+        models_dir.mkdir(parents=True, exist_ok=True)
+        print(f"✅ Created models directory at {models_dir}")
         return models
-    for model_path in models_dir.glob("*.h5"):
+    
+    h5_files = list(models_dir.glob("*.h5"))
+    if not h5_files:
+        print(f"⚠️  No .h5 model files found in {models_dir}")
+    
+    for model_path in h5_files:
         key = model_path.stem.lower()
         display = model_path.stem
         models[display] = {
             "path": model_path.resolve(),
             "size": MODEL_CONFIGS.get(key, MODEL_CONFIGS["default"])["size"],
         }
+        print(f"✅ Found model: {display} at {model_path}")
+    
     return models
 
 
@@ -223,10 +233,16 @@ NO_MODEL_PLACEHOLDER = "❌ No trained models available"
 
 
 def get_class_names():
-    images_dir = Path("images")
+    images_dir = Path("images").resolve()
     if not images_dir.exists():
+        print(f"⚠️  Images directory not found at {images_dir}")
         return []
-    return sorted([d.name for d in images_dir.iterdir() if d.is_dir()])
+    
+    class_dirs = [d for d in images_dir.iterdir() if d.is_dir()]
+    if not class_dirs:
+        print(f"⚠️  No class subdirectories found in {images_dir}")
+    
+    return sorted([d.name for d in class_dirs])
 
 
 def load_model_for_inference(model_name, models):
@@ -378,7 +394,14 @@ def train_all_models(img_size=224, epochs=10):
                 verbose=1
             )
 
-            model.save(f'models/{name}.h5')
+            # Ensure models directory exists
+            models_dir = Path('models').resolve()
+            models_dir.mkdir(parents=True, exist_ok=True)
+            
+            model_path = models_dir / f'{name}.h5'
+            model.save(str(model_path))
+            print(f"✅ Saved model to {model_path}")
+            
             plot_training_history(history, name, 'results')
             acc = evaluate_model(model, val_ds, class_names, name, 'results')
             results[name] = acc
@@ -388,7 +411,7 @@ def train_all_models(img_size=224, epochs=10):
                 val_accuracy=acc,
                 epoch_durations=live_monitor.epoch_durations,
             )
-            quantize_and_export(f'models/{name}.h5', 'models', name)
+            quantize_and_export(str(model_path), str(models_dir), name)
 
             print(f"✅ {name} - Val Accuracy: {acc:.4f}")
         except Exception as exc:
@@ -397,9 +420,19 @@ def train_all_models(img_size=224, epochs=10):
 
     best = max(results, key=results.get)
     print(f"\n🏆 Best Model: {best} ({results[best]:.4f})")
-    shutil.copy(f'models/{best}.h5', 'best_model.h5')
-    shutil.copy(f'models/{best}_quant.tflite', 'best_model_quant.tflite')
-    shutil.copy(f'models/{best}.onnx', 'best_model.onnx')
+    
+    models_dir = Path('models').resolve()
+    best_h5 = models_dir / f'{best}.h5'
+    best_tflite = models_dir / f'{best}_quant.tflite'
+    best_onnx = models_dir / f'{best}.onnx'
+    
+    if best_h5.exists():
+        shutil.copy(str(best_h5), 'best_model.h5')
+        print(f"✅ Copied best model: {best_h5} -> best_model.h5")
+    if best_tflite.exists():
+        shutil.copy(str(best_tflite), 'best_model_quant.tflite')
+    if best_onnx.exists():
+        shutil.copy(str(best_onnx), 'best_model.onnx')
 
     with open('results/model_comparison.json', 'w') as f:
         json.dump(results, f, indent=2)
